@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DRE.LI Url shortener</title>
+    <meta name="google-site-verification" content="_D5RUsEXOjcJ_uIEDcjJQj3eQswZ6wUTbNazw6mTZFg" />
+</head>
+<body>
+<form method="POST" action="/">
+    <input type="text" name="url" placeholder="url" />
+    <input type="password" name="password" placeholder="password" />
+    <input type="text" name="name" placeholder="name" />
+    <input type="submit" value="shorten" />
+</form>
+<form method="POST" action="/getcount">
+    <input type="text" name="name" placeholder="name" />
+    <input type="password" name="password" placeholder="password" />
+    <input type="submit" value="Wie oft aufgerufen?" />
+</form>
+<form method="POST" action="/delete">
+    <input type="password" name="password" placeholder="password" />
+    <input type="text" name="name" placeholder="name" />
+    <input type="submit" value="DELETE" style="background-color: red; color: white; font-weight: bold;"/>
+</form>
+</body>
+</html>
