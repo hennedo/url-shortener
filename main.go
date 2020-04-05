@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
 
@@ -21,6 +22,7 @@ type Link struct {
 	bongo.DocumentBase `bson:",inline"`
 	Name string
 	Url string
+	Scam bool
 	ClicksFacebook int `bson:"clicksFacebook"`
 	ClicksInstagram int `bson:"clicksInstagram"`
 	ClicksOther int `bson:"clicksOther"`
@@ -61,9 +63,11 @@ func main() {
 	r.HandleFunc("/", newShortUrl).Methods("POST")
 	r.HandleFunc("/delete", deleteHandler).Methods("POST")
 	r.HandleFunc("/getcount", countHandler).Methods("POST")
+	r.HandleFunc("/scam", scamHandler).Methods("POST")
 	r.HandleFunc("/admin", adminHandler).Methods("GET")
 	r.HandleFunc("/favicon.ico", faviconHandler).Methods("GET")
 	r.HandleFunc("/{name}", redirectHandler).Methods("GET")
+	r.HandleFunc("/{name}", redirectHandler).Methods("POST")
 	r.PathPrefix("/").HandlerFunc(notFoundHandler)
 	http.Handle("/", r)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("port")), nil))
@@ -100,7 +104,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
 		returnError404(w)
 		return
-	// crappingfuckfuckers warum gibt es denn nen string zurück mit not found.. wie dumm.
+		// crappingfuckfuckers warum gibt es denn nen string zurück mit not found.. wie dumm.
 	} else if err != nil {
 		if err.Error() == "not found" {
 			logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
@@ -112,6 +116,47 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	logrus.Info(fmt.Sprintf("Deleting \"%s\"", name))
 	_, _ = fmt.Fprintf(w, "Link deleted!")
+}
+
+func scamHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		returnError500(err, w);
+		return
+	}
+	name := r.FormValue("name")
+	password := r.FormValue("password")
+	if password != viper.Get("admin-password") {
+		logrus.Info(fmt.Sprintf("Auth failed on delete for \"%s\"... tried \"%s\"", name, password))
+		returnError401(w)
+		return
+	}
+	if name == "" {
+		_, _ = fmt.Fprintf(w, "We need a link name..")
+		return
+	}
+	link := &Link{}
+	err := connection.Collection("links").FindOne(bson2.M{"name": name}, &link)
+	if _, ok := err.(*bongo.DocumentNotFoundError); ok {
+		logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
+		returnError404(w)
+		return
+	} else if err != nil {
+		if err.Error() == "not found" {
+			logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
+			returnError404(w)
+			return
+		}
+		returnError500(err, w)
+		return
+	}
+	link.Scam = true
+	err = connection.Collection("links").Save(link)
+	if err != nil {
+		returnError500(err, w)
+	} else {
+		logrus.Info(fmt.Sprintf("Scamming \"%s\"", name))
+		_, _ = fmt.Fprintf(w, "Link Scammed!")
+	}
 }
 
 func countHandler(w http.ResponseWriter, r *http.Request) {
@@ -154,6 +199,14 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		returnError500(err, w)
+		return
+	}
+	if link.Scam && r.Method != "POST" {
+		tmpl := template.Must(template.ParseFiles("htmlfiles/scam.html"))
+		err := tmpl.ExecuteTemplate(w, "scam.html", link)
+		if err != nil {
+			logrus.Error(err)
+		}
 		return
 	}
 	referer := r.Header.Get("referer")

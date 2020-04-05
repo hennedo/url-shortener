@@ -95,12 +95,15 @@
 		</style>
 	</head>
 	<body>
-		<form method="POST" action="/">
-			<div class="emoji">‍🕵</div>
-			<h1>Shorten your links!</h1>
-			<div class="urlinput"><input type="text" name="url" placeholder="url"/></div>
-			<div><span class="label">Emojify short url</span> <input type="checkbox" name="emoji" value="1" id="emoji"/><label for="emoji"></label></div>
-			<input type="submit" value="shorten" class="button"/>
+		<h1 style="text-align: center">
+			<span class="emoji">⛔️</span><br />
+			Achtung! <br/>
+			Beware!
+		</h1>
+		<p style="text-align: center">Dieser Link wurde als Spam / Scam identifiziert. Die Seite, die sich hier hinter verbirgt versucht scheinbar zu betrügen. Wenn du dir dem Risiko bewusst bist, folge dem Link unten.</p>
+		<p style="text-align: center">This link was flagged as spam or scam. If you follow the link down below, be ware, that the site might try to scam you.</p>
+		<form method="post" action="/{{.Name}}">
+			<input type="submit" value="Show me the site!">
 		</form>
 		<iframe src="https://ghbtns.com/github-btn.html?user=henne-&amp;repo=url-shortener&amp;type=star&amp;count=true" scrolling="0" style="position: absolute;left: 10px;top: 10px;" width="170px" height="20px" frameborder="0"></iframe>
 	</body>
