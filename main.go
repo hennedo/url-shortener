@@ -194,7 +194,7 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	link := &Link{}
 	err := connection.Collection("links").FindOne(bson.M{"name": params["name"]}, link)
 	if _, ok := err.(*bongo.DocumentNotFoundError); ok {
-		logrus.Info(fmt.Sprintf("Short \"%s\" not found", link.Name))
+		logrus.Info(fmt.Sprintf("Short \"%s\" not found", params["name"]))
 		returnError404(w)
 		return
 	} else if err != nil {
@@ -272,5 +272,5 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	returnError404(w)
-	logrus.Info(fmt.Sprintf("URL not found: %s", r.URL))
+	logrus.Info(fmt.Sprintf("URL not found: %s %s", r.URL, r.Method))
 }
