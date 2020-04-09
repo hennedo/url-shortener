@@ -18,6 +18,8 @@ import (
 
 var connection *bongo.Connection
 
+var templates = template.Must(template.ParseFiles("templates/scam.html", "templates/count.html"))
+
 func main() {
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{
@@ -47,29 +49,21 @@ func main() {
 	})
 
 	r := mux.NewRouter()
-	r.HandleFunc("/", rootHandler).Methods("GET")
 	r.HandleFunc("/", newShortUrl).Methods("POST")
 	r.HandleFunc("/delete", deleteHandler).Methods("POST")
 	r.HandleFunc("/getcount", countHandler).Methods("POST")
 	r.HandleFunc("/scam", scamHandler).Methods("POST")
-	r.HandleFunc("/admin", adminHandler).Methods("GET")
-	r.HandleFunc("/favicon.ico", faviconHandler).Methods("GET")
+	r.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/admin.html")
+	}).Methods("GET")
+	r.PathPrefix("/favicon.ico").Handler(http.FileServer(http.Dir("./static/")))
 	r.HandleFunc("/{name}", redirectHandler).Methods("GET")
 	r.HandleFunc("/{name}", redirectHeadHandler).Methods("HEAD")
 	r.HandleFunc("/{name}", redirectHandler).Methods("POST")
+	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
 	r.PathPrefix("/").HandlerFunc(notFoundHandler)
 	http.Handle("/", r)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("port")), nil))
-}
-func faviconHandler(w http.ResponseWriter, r *http.Request) {
-	serveFile(w, "favicon.ico")
-}
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	serveFile(w, "index.html")
-}
-
-func adminHandler(w http.ResponseWriter, r *http.Request) {
-	serveFile(w, "index_admin.html")
 }
 
 func deleteHandler(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +162,13 @@ func countHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logrus.Info(fmt.Sprintf("Getting counts for \"%s\"", name))
-	fmt.Fprintf(w, "<html><body><h1>h%s/%s</h1><ul><li>click count: %d</li><li>facebook: %d</li><li>instagram: %d</li><li>other: %d</li><li>none: %d</li></ul></body></html>", viper.GetString("base-url"), link.Name, link.Clicks, link.ClicksFacebook, link.ClicksInstagram, link.ClicksOther, link.ClicksNone)
+	err = templates.ExecuteTemplate(w, "count.html", map[string]interface{}{
+		"BaseUrl": viper.GetString("base-url"),
+		"Link": link,
+	})
+	if err != nil {
+		logrus.Error(err)
+	}
 }
 func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
@@ -182,8 +182,7 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if link.Scam && r.Method != "POST" {
-		tmpl := template.Must(template.ParseFiles("htmlfiles/scam.html"))
-		err := tmpl.ExecuteTemplate(w, "scam.html", link)
+		err := templates.ExecuteTemplate(w, "scam.html", link)
 		if err != nil {
 			logrus.Error(err)
 		}

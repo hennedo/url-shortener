@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"regexp"
@@ -56,15 +55,6 @@ func getLink(name string) (error, *Link) {
 	}
 	return err, link
 }
-
-func serveFile(w http.ResponseWriter, filename string) {
-	body, err := ioutil.ReadFile("htmlfiles/" + filename)
-	if err != nil {
-		returnError500(err, w)
-	}
-	_, _ = fmt.Fprintf(w, "%s", body)
-}
-
 func addHttp(url string) string {
 	r := regexp.MustCompile("^(((f|ht)tps?)|tg)://")
 	if !r.MatchString(url) {

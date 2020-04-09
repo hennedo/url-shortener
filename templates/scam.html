@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>DRE.LI Url shortener</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width">
+		<link href="https://fonts.googleapis.com/css?family=Heebo:900|Montserrat&display=swap" rel="stylesheet">
+		<link href="/css/styles.css" rel="stylesheet">
+	</head>
+	<body>
+		<h1 style="text-align: center">
+			<span class="emoji">⛔️</span><br />
+			Achtung! <br/>
+			Beware!
+		</h1>
+		<p style="text-align: center">Dieser Link wurde als Spam / Scam identifiziert. Die Seite, die sich hier hinter verbirgt versucht scheinbar zu betrügen. Wenn du dir dem Risiko bewusst bist, folge dem Link unten.</p>
+		<p style="text-align: center">This link was flagged as spam or scam. If you follow the link down below, be ware, that the site might try to scam you.</p>
+		<form method="post" action="/{{.Name}}">
+			<input type="submit" value="Show me the site!">
+		</form>
+		<iframe src="https://ghbtns.com/github-btn.html?user=henne-&amp;repo=url-shortener&amp;type=star&amp;count=true" scrolling="0" style="position: absolute;left: 10px;top: 10px;" width="170px" height="20px" frameborder="0"></iframe>
+	</body>
+</html>

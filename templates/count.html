@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DRE.LI Url shortener</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link href="https://fonts.googleapis.com/css?family=Heebo:900|Montserrat&display=swap" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <h1>{{.BaseUrl}}/{{.Link.Name}}</h1>
+    <ul>
+        <li>Total clicks: {{.Link.Clicks}}</li>
+        <li>From Facebook: {{.Link.ClicksFacebook}}</li>
+        <li>From Instagram: {{.Link.ClicksInstagram}}</li>
+        <li>From other platforms: {{.Link.ClicksOther}}</li>
+        <li>Clicks without referer: {{.Link.ClicksNone}}</li>
+    </ul>
+<iframe src="https://ghbtns.com/github-btn.html?user=henne-&amp;repo=url-shortener&amp;type=star&amp;count=true" scrolling="0" style="position: absolute;left: 10px;top: 10px;" width="170px" height="20px" frameborder="0"></iframe>
+</body>
+</html>
