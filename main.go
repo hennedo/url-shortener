@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/go-bongo/bongo"
@@ -68,6 +69,7 @@ func main() {
 }
 
 func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	requestTimer := time.Now()
 	if err := r.ParseForm(); err != nil {
 		returnError500(err, w);
 		return
@@ -98,11 +100,13 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		returnError500(err, w)
 		return
 	}
-	logrus.Info(fmt.Sprintf("Deleting \"%s\"", name))
+	requestTime := time.Since(requestTimer)
+	logrus.Info(fmt.Sprintf("[%v] Deleting \"%s\"", requestTime, name))
 	_, _ = fmt.Fprintf(w, "Link deleted!")
 }
 
 func scamHandler(w http.ResponseWriter, r *http.Request) {
+	requestTimer := time.Now()
 	if err := r.ParseForm(); err != nil {
 		returnError500(err, w);
 		return
@@ -132,12 +136,14 @@ func scamHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnError500(err, w)
 	} else {
-		logrus.Info(fmt.Sprintf("Scamming \"%s\"", name))
+		requestTime := time.Since(requestTimer)
+		logrus.Info(fmt.Sprintf("[%v] Scamming \"%s\"", requestTime, name))
 		_, _ = fmt.Fprintf(w, "Link Scammed!")
 	}
 }
 
 func countHandler(w http.ResponseWriter, r *http.Request) {
+	requestTimer := time.Now()
 	if err := r.ParseForm(); err != nil {
 		returnError500(err, w)
 		return
@@ -162,7 +168,6 @@ func countHandler(w http.ResponseWriter, r *http.Request) {
 		returnError500(err, w)
 		return
 	}
-	logrus.Info(fmt.Sprintf("Getting counts for \"%s\"", name))
 	err = templates.ExecuteTemplate(w, "count.html", map[string]interface{}{
 		"BaseUrl": viper.GetString("base-url"),
 		"Link": link,
@@ -170,8 +175,11 @@ func countHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Error(err)
 	}
+	requestTime := time.Since(requestTimer)
+	logrus.Info(fmt.Sprintf("[%v] Getting counts for \"%s\"", requestTime, name))
 }
 func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	requestTimer := time.Now()
 	params := mux.Vars(r)
 	err, link := getLink(params["name"])
 	if err != nil {
@@ -204,11 +212,13 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Error(err)
 	}
-	logrus.Info(fmt.Sprintf("Redirecting %s to %s", link.Name, link.Url))
+	requestTime := time.Since(requestTimer)
+	logrus.Info(fmt.Sprintf("[%v] Redirecting %s to %s", requestTime, link.Name, link.Url))
 	http.Redirect(w, r, link.Url, 302)
 }
 
 func newShortUrl(w http.ResponseWriter, r *http.Request) {
+	requestTimer := time.Now()
 	if err := r.ParseForm(); err != nil {
 		returnError500(err, w)
 		return
@@ -246,7 +256,8 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 		returnError500(err, w)
 		return
 	}
-	logrus.Info(fmt.Sprintf("New Shorturl: %s redirects to %s", name, url))
+	requestTime := time.Since(requestTimer)
+	logrus.Info(fmt.Sprintf("[%v] New Shorturl: %s redirects to %s", requestTime, name, url))
 	_, _ = fmt.Fprintf(w, "%s/%s", viper.GetString("base-url"), name)
 }
 
