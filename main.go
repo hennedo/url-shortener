@@ -57,8 +57,9 @@ func main() {
 		http.ServeFile(w, r, "./static/admin.html")
 	}).Methods("GET")
 	r.PathPrefix("/favicon.ico").Handler(http.FileServer(http.Dir("./static/")))
+	r.HandleFunc("/monitoring", monitoringHandler).Methods("HEAD")
+	r.HandleFunc("/monitoring", monitoringHandler).Methods("GET")
 	r.HandleFunc("/{name}", redirectHandler).Methods("GET")
-	r.HandleFunc("/{name}", redirectHeadHandler).Methods("HEAD")
 	r.HandleFunc("/{name}", redirectHandler).Methods("POST")
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
 	r.PathPrefix("/").HandlerFunc(notFoundHandler)
@@ -206,43 +207,6 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	logrus.Info(fmt.Sprintf("Redirecting %s to %s", link.Name, link.Url))
 	http.Redirect(w, r, link.Url, 302)
 }
-func redirectHeadHandler(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	err, link := getLink(params["name"])
-	if err != nil {
-		if err.Error() == "404" {
-			returnError404(w)
-			return
-		}
-		returnError500(err, w)
-		return
-	}
-	if link.Scam && r.Method != "POST" {
-		tmpl := template.Must(template.ParseFiles("htmlfiles/scam.html"))
-		err := tmpl.ExecuteTemplate(w, "scam.html", link)
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	referer := r.Header.Get("referer")
-	link.Clicks++
-	if referer == "" {
-		link.ClicksNone++
-	} else if strings.Contains(referer, "facebook.com") {
-		link.ClicksFacebook++
-	} else if strings.Contains(referer, "instagram.com") {
-		link.ClicksInstagram++
-	} else {
-		link.ClicksOther++
-	}
-	err = connection.Collection("links").Save(link)
-	if err != nil {
-		logrus.Error(err)
-	}
-	logrus.Info(fmt.Sprintf("Redirecting %s to %s", link.Name, link.Url))
-	http.Redirect(w, r, link.Url, 302)
-}
 
 func newShortUrl(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
@@ -284,6 +248,16 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 	}
 	logrus.Info(fmt.Sprintf("New Shorturl: %s redirects to %s", name, url))
 	_, _ = fmt.Fprintf(w, "%s/%s", viper.GetString("base-url"), name)
+}
+
+func monitoringHandler(w http.ResponseWriter, r *http.Request) {
+	link := &Link{}
+	err := connection.Collection("links").FindOne(bson.M{}, link)
+	if err != nil {
+		returnError500(err, w)
+		return
+	}
+	w.WriteHeader(200)
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
