@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -45,6 +46,16 @@ func randomString(length int, emoji bool) string {
 	return randomString
 }
 
+
+func getLink(name string) (error, *Link) {
+	link := &Link{}
+	err := connection.Collection("links").FindOne(bson.M{"name": name}, link)
+	if _, ok := err.(*bongo.DocumentNotFoundError); ok {
+		logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
+		return errors.New("404"), nil
+	}
+	return err, link
+}
 
 func serveFile(w http.ResponseWriter, filename string) {
 	body, err := ioutil.ReadFile("htmlfiles/" + filename)

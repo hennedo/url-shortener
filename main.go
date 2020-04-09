@@ -18,18 +18,6 @@ import (
 
 var connection *bongo.Connection
 
-type Link struct {
-	bongo.DocumentBase `bson:",inline"`
-	Name string
-	Url string
-	Scam bool
-	ClicksFacebook int `bson:"clicksFacebook"`
-	ClicksInstagram int `bson:"clicksInstagram"`
-	ClicksOther int `bson:"clicksOther"`
-	ClicksNone int `bson:"clicksNone"`
-	Clicks int `bson:"clicks"`
-}
-
 func main() {
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{
@@ -67,6 +55,7 @@ func main() {
 	r.HandleFunc("/admin", adminHandler).Methods("GET")
 	r.HandleFunc("/favicon.ico", faviconHandler).Methods("GET")
 	r.HandleFunc("/{name}", redirectHandler).Methods("GET")
+	r.HandleFunc("/{name}", redirectHeadHandler).Methods("HEAD")
 	r.HandleFunc("/{name}", redirectHandler).Methods("POST")
 	r.PathPrefix("/").HandlerFunc(notFoundHandler)
 	http.Handle("/", r)
@@ -134,15 +123,9 @@ func scamHandler(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintf(w, "We need a link name..")
 		return
 	}
-	link := &Link{}
-	err := connection.Collection("links").FindOne(bson2.M{"name": name}, &link)
-	if _, ok := err.(*bongo.DocumentNotFoundError); ok {
-		logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
-		returnError404(w)
-		return
-	} else if err != nil {
-		if err.Error() == "not found" {
-			logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
+	err, link := getLink(name)
+	if err != nil {
+		if err.Error() == "404" {
 			returnError404(w)
 			return
 		}
@@ -175,29 +158,26 @@ func countHandler(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintf(w, "We need a link name.")
 		return
 	}
-	link := &Link{}
-	err := connection.Collection("links").FindOne(bson.M{"name": name}, link)
-	if _, ok := err.(*bongo.DocumentNotFoundError); ok {
-		logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
-		returnError404(w)
-		return
-	} else if err != nil {
+	err, link := getLink(name)
+	if err != nil {
+		if err.Error() == "404" {
+			returnError404(w)
+			return
+		}
 		returnError500(err, w)
 		return
 	}
 	logrus.Info(fmt.Sprintf("Getting counts for \"%s\"", name))
 	fmt.Fprintf(w, "<html><body><h1>h%s/%s</h1><ul><li>click count: %d</li><li>facebook: %d</li><li>instagram: %d</li><li>other: %d</li><li>none: %d</li></ul></body></html>", viper.GetString("base-url"), link.Name, link.Clicks, link.ClicksFacebook, link.ClicksInstagram, link.ClicksOther, link.ClicksNone)
 }
-
 func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	link := &Link{}
-	err := connection.Collection("links").FindOne(bson.M{"name": params["name"]}, link)
-	if _, ok := err.(*bongo.DocumentNotFoundError); ok {
-		logrus.Info(fmt.Sprintf("Short \"%s\" not found", params["name"]))
-		returnError404(w)
-		return
-	} else if err != nil {
+	err, link := getLink(params["name"])
+	if err != nil {
+		if err.Error() == "404" {
+			returnError404(w)
+			return
+		}
 		returnError500(err, w)
 		return
 	}
@@ -222,7 +202,44 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = connection.Collection("links").Save(link)
 	if err != nil {
-		logrus.Warn(err)
+		logrus.Error(err)
+	}
+	logrus.Info(fmt.Sprintf("Redirecting %s to %s", link.Name, link.Url))
+	http.Redirect(w, r, link.Url, 302)
+}
+func redirectHeadHandler(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	err, link := getLink(params["name"])
+	if err != nil {
+		if err.Error() == "404" {
+			returnError404(w)
+			return
+		}
+		returnError500(err, w)
+		return
+	}
+	if link.Scam && r.Method != "POST" {
+		tmpl := template.Must(template.ParseFiles("htmlfiles/scam.html"))
+		err := tmpl.ExecuteTemplate(w, "scam.html", link)
+		if err != nil {
+			logrus.Error(err)
+		}
+		return
+	}
+	referer := r.Header.Get("referer")
+	link.Clicks++
+	if referer == "" {
+		link.ClicksNone++
+	} else if strings.Contains(referer, "facebook.com") {
+		link.ClicksFacebook++
+	} else if strings.Contains(referer, "instagram.com") {
+		link.ClicksInstagram++
+	} else {
+		link.ClicksOther++
+	}
+	err = connection.Collection("links").Save(link)
+	if err != nil {
+		logrus.Error(err)
 	}
 	logrus.Info(fmt.Sprintf("Redirecting %s to %s", link.Name, link.Url))
 	http.Redirect(w, r, link.Url, 302)
