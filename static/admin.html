@@ -3,28 +3,24 @@
 <head>
     <title>DRE.LI Url shortener</title>
     <meta name="google-site-verification" content="_D5RUsEXOjcJ_uIEDcjJQj3eQswZ6wUTbNazw6mTZFg" />
+    <link href="/static/css/styles.css" rel="stylesheet">
 </head>
 <body>
-<form method="POST" action="/">
-    <input type="text" name="url" placeholder="url" />
-    <input type="password" name="password" placeholder="password" />
-    <input type="text" name="name" placeholder="name" />
-    <input type="submit" value="shorten" />
+<form method="POST" action="/" class="text-center">
+    <h2>Create custom Short URL</h2>
+    <input type="text" name="url" placeholder="url" /><br />
+    <input type="text" name="name" placeholder="name" /><br />
+    <input type="password" name="password" placeholder="password" /><br />
+    <br />
+    <input type="submit" value="shorten" class="button" />
+</form><br />
+<form method="POST" action="/scam" class="text-center">
+    <h2>Mark Shorturl as scam / spam</h2>
+    <input type="text" name="name" placeholder="name" /><br />
+    <input type="password" name="password" placeholder="password" /><br />
+    <br />
+    <input type="submit" value="SCAM" class="button" style="background-color: red; color: white; font-weight: bold;"/>
 </form>
-<form method="POST" action="/getcount">
-    <input type="text" name="name" placeholder="name" />
-    <input type="password" name="password" placeholder="password" />
-    <input type="submit" value="Wie oft aufgerufen?" />
-</form>
-<form method="POST" action="/delete">
-    <input type="password" name="password" placeholder="password" />
-    <input type="text" name="name" placeholder="name" />
-    <input type="submit" value="DELETE" style="background-color: red; color: white; font-weight: bold;"/>
-</form>
-<form method="POST" action="/scam">
-    <input type="password" name="password" placeholder="password" />
-    <input type="text" name="name" placeholder="name" />
-    <input type="submit" value="SCAM" style="background-color: red; color: white; font-weight: bold;"/>
-</form>
+<iframe src="https://ghbtns.com/github-btn.html?user=henne-&amp;repo=url-shortener&amp;type=star&amp;count=true" scrolling="0" style="position: absolute;left: 10px;top: 10px;" width="170px" height="20px" frameborder="0"></iframe>
 </body>
 </html>

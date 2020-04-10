@@ -7,6 +7,7 @@ type Link struct {
 	Name string
 	Url string
 	Scam bool
+	Password string
 	ClicksFacebook int `bson:"clicksFacebook"`
 	ClicksInstagram int `bson:"clicksInstagram"`
 	ClicksOther int `bson:"clicksOther"`

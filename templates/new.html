@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DRE.LI Url shortener</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link href="https://fonts.googleapis.com/css?family=Heebo:900|Montserrat&display=swap" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+    <script type="text/javascript">
+        function copyLink() {
+            var linkElem = document.getElementById("link");
+            linkElem.select();
+            document.execCommand("copy");
+        }
+    </script>
+</head>
+<body>
+    <h1 class="text-center">New short URL!</h1>
+    <div class="text-center">
+        <p><input type="text" value="{{.BaseUrl}}/{{.Link.Name}}" id="link"/> <button onclick="copyLink()">Kopieren!</button></p>
+        <p>
+            You can manage your new ShortUrl with the following link<br />
+            <br />
+            <a href="{{.BaseUrl}}/{{.Link.Name}}/{{.Link.Password}}">{{.BaseUrl}}/{{.Link.Name}}/{{.Link.Password}}</a>
+        </p>
+    </div>
+<iframe src="https://ghbtns.com/github-btn.html?user=henne-&amp;repo=url-shortener&amp;type=star&amp;count=true" scrolling="0" style="position: absolute;left: 10px;top: 10px;" width="170px" height="20px" frameborder="0"></iframe>
+</body>
+</html>

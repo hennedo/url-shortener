@@ -14,11 +14,13 @@ body {
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#4b6cb7",endColorstr="#182848",GradientType=1);
     box-sizing: border-box;
 }
+.text-center {
+    text-align: center;
+}
 form {
     position: relative;
     left: 50%;
     top: 50%;
-    text-align: center;
     width: 434px;
     height: 370px;
     margin-top: -185px;
@@ -83,4 +85,9 @@ input[type="checkbox"]:checked+label::before {
 }
 .emoji {
     font-size: 80px;
+}
+
+a:link, a:hover, a:focus, a:visited {
+    color: #ffe6e6;
+    text-decoration: none;
 }
