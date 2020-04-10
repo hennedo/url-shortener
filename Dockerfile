@@ -10,7 +10,8 @@ RUN zip -r -0 /zoneinfo.zip .
 
 FROM scratch
 COPY --from=golang /go/bin/url-shortener-go /url-shortener-go
-COPY --from=golang /go/src/url-shortener/htmlfiles /htmlfiles
+COPY --from=golang /go/src/url-shortener/templates /templates
+COPY --from=golang /go/src/url-shortener/static /static
 ENV ZONEINFO /zoneinfo.zip
 COPY --from=alpine /zoneinfo.zip /
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
