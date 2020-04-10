@@ -101,7 +101,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		returnError500(err, w)
 		return
 	}
-	if params["password"] != "" || (params["password"] != viper.Get("admin-password") && params["password"] != link.Password) {
+	if params["password"] == "" || (params["password"] != viper.Get("admin-password") && params["password"] != link.Password) {
 		logrus.Info(fmt.Sprintf("Auth failed on delete for \"%s\"... tried \"%s\"", name, params["password"]))
 		returnError401(w)
 		return
@@ -178,7 +178,7 @@ func manageHandler(w http.ResponseWriter, r *http.Request) {
 		returnError500(err, w)
 		return
 	}
-	if params["password"] != "" || (params["password"] != viper.Get("admin-password") && params["password"] != link.Password) {
+	if params["password"] == "" || (params["password"] != viper.Get("admin-password") && params["password"] != link.Password) {
 		logrus.Info(fmt.Sprintf("Auth failed on manage for \"%s\"... tried \"%s\"", name, params["password"]))
 		returnError401(w)
 		return
@@ -247,7 +247,6 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	var response string
 	if r.FormValue("accept") != "" {
-		logrus.Info(r.FormValue("accept"))
 		response = r.FormValue("accept")
 	} else {
 		response = strings.Split(r.Header.Get("Accept"), ",")[0]
@@ -309,8 +308,7 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 		break
 	}
 	requestTime := time.Since(requestTimer)
-	logrus.Info(r.Header.Get("Accept"))
-	logrus.Info(fmt.Sprintf("[%v] New Shorturl: %s redirects to %s", requestTime, name, url))
+	logrus.Info(fmt.Sprintf("[%v] New Shorturl: %s redirects to %s (%s)", requestTime, name, url, r.Header.Get("Accept")))
 }
 
 func monitoringHandler(w http.ResponseWriter, r *http.Request) {
