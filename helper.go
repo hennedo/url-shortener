@@ -56,7 +56,7 @@ func getLink(name string) (error, *Link) {
 	return err, link
 }
 func addHttp(url string) string {
-	r := regexp.MustCompile("^(((f|ht)tps?)|tg)://")
+	r := regexp.MustCompile("^(((f|ht)tps?)|tg|steam)://")
 	if !r.MatchString(url) {
 		url = "http://" + url
 	}
