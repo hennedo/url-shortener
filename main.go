@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/mgo.v2"
 	bson2 "gopkg.in/mgo.v2/bson"
+	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 var connection *bongo.Connection
@@ -32,6 +34,8 @@ func main() {
 	flag.Int("port", 8000, "Port where the url shortener listens")
 	flag.String("admin-password", "foobar2342", "Password for the admin endpoint")
 	flag.String("base-url", "http://localhost:8000", "Baseurl of the URL shortener")
+	flag.String("telegram-token", "", "Telegram Token for notifications")
+	flag.String("telegram-user", "", "Admin user for telegram notifications")
 	_ = viper.BindPFlags(flag.CommandLine)
 	flag.Parse()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -49,6 +53,8 @@ func main() {
 		Key:              []string{"name"},
 		Unique:           true,
 	})
+
+	initTelegram(viper.GetString("telegram-token"), viper.GetInt("telegram-user"))
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +129,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 func scamHandler(w http.ResponseWriter, r *http.Request) {
 	requestTimer := time.Now()
 	if err := r.ParseForm(); err != nil {
-		returnError500(err, w);
+		returnError500(err, w)
 		return
 	}
 	name := r.FormValue("name")
@@ -308,6 +314,7 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 		break
 	}
 	requestTime := time.Since(requestTimer)
+	notifyTelegram(*link)
 	logrus.Info(fmt.Sprintf("[%v] New Shorturl: %s redirects to %s (%s)", requestTime, name, url, r.Header.Get("Accept")))
 }
 
@@ -324,4 +331,66 @@ func monitoringHandler(w http.ResponseWriter, r *http.Request) {
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	returnError404(w)
 	logrus.Info(fmt.Sprintf("URL not found: %s %s", r.URL, r.Method))
+}
+
+var telegramBot *tb.Bot
+var scamButton tb.InlineButton
+var telegramUserID int
+
+func initTelegram(token string, userID int) {
+	if token == "" || userID == 0 {
+		logrus.Info("Not initializing telegram due to missing config")
+		return
+	}
+	var err error
+	telegramBot, err = tb.NewBot(tb.Settings{
+		Token:  token,
+		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
+	})
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	telegramUserID = userID
+	scamButton = tb.InlineButton{
+		Unique: "scambutton",
+		Text: "Scam",
+	}
+
+	telegramBot.Handle(&scamButton, func(c *tb.Callback) {
+		if c.Sender.ID != telegramUserID {
+			return
+		}
+		err, link := getLink(c.Data)
+		if err != nil {
+			telegramBot.Send(c.Sender, err.Error())
+			return
+		}
+		link.Scam = true
+		err = connection.Collection("links").Save(link)
+		if err != nil {
+			telegramBot.Send(c.Sender, err.Error())
+			return
+		}
+		telegramBot.Send(c.Sender, fmt.Sprintf("%s wurde gescammt. Es wurde nur %d mal geklickt", link.Name, link.Clicks))
+	})
+	go telegramBot.Start()
+}
+
+func notifyTelegram(link Link) {
+	if telegramUserID == 0 {
+		return
+	}
+	msg := fmt.Sprintf("Neuer Link %s führt zu \"%s\"", link.Name, link.Url)
+	scamButton.Data = link.Name
+	_, err := telegramBot.Send(&tb.User{ID: telegramUserID}, msg, &tb.ReplyMarkup{
+		InlineKeyboard:      [][]tb.InlineButton{
+			{
+				scamButton,
+			},
+		},
+	})
+	if err != nil {
+		logrus.Error(err)
+	}
 }
