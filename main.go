@@ -68,6 +68,7 @@ func main() {
 		http.ServeFile(w, r, "./static/admin.html")
 	}).Methods("GET")
 	r.PathPrefix("/favicon.ico").Handler(http.FileServer(http.Dir("./static/")))
+	r.PathPrefix("/robots.txt").Handler(http.FileServer(http.Dir("./static/")))
 	r.HandleFunc("/monitoring", monitoringHandler).Methods("HEAD")
 	r.HandleFunc("/monitoring", monitoringHandler).Methods("GET")
 	r.HandleFunc("/{name}", redirectHandler).Methods("GET")
