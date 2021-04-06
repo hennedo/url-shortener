@@ -128,17 +128,24 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func cleanupHandler(w http.ResponseWriter, r *http.Request) {
+	requestTimer := time.Now()
 	deadline := time.Now().Add(-10 * 24 * time.Hour)
 	results := connection.Collection("links").Find(bson.M{"clicks": 0})
 	link := &Link{}
+	countDeadlinks := 0
+	countDeletedLinks := 0
 	for results.Next(link) {
 		logrus.Infof("Link %s was never clicked", link.Name)
+		countDeadlinks++
 		if link.Created.Before(deadline) {
 			logrus.Infof("Deleting link %s", link.Name)
+			countDeletedLinks++
 			connection.Collection("links").DeleteDocument(link)
 		}
 	}
-	http.NotFound(w, r)
+	countDeadlinks -= countDeletedLinks
+	requestTime := time.Since(requestTimer)
+	w.Write([]byte(fmt.Sprintf("Cleanup finished in %v. Deleted %d links, there are %d links with no clicks left", requestTime, countDeletedLinks, countDeadlinks)))
 }
 
 func scamHandler(w http.ResponseWriter, r *http.Request) {
