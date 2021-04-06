@@ -253,6 +253,9 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	requestTime := time.Since(requestTimer)
 	logrus.Info(fmt.Sprintf("[%v] Redirecting %s to %s", requestTime, link.Name, link.Url))
+	if link.Clicks == 10 {
+		notifyTelegram(*link)
+	}
 	http.Redirect(w, r, link.Url, 302)
 }
 
@@ -329,7 +332,6 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 		break
 	}
 	requestTime := time.Since(requestTimer)
-	notifyTelegram(*link)
 	logrus.Info(fmt.Sprintf("[%v] New Shorturl: %s redirects to %s (%s)", requestTime, name, url, r.Header.Get("Accept")))
 }
 
@@ -396,7 +398,7 @@ func notifyTelegram(link Link) {
 	if telegramUserID == 0 {
 		return
 	}
-	msg := fmt.Sprintf("Neuer Link %s führt zu \"%s\"", link.Name, link.Url)
+	msg := fmt.Sprintf("Link %s führt zu \"%s\" und wurde bereits %d mal geklickt", link.Name, link.Url, link.Clicks)
 	scamButton.Data = link.Name
 	_, err := telegramBot.Send(&tb.User{ID: telegramUserID}, msg, &tb.ReplyMarkup{
 		InlineKeyboard:      [][]tb.InlineButton{
