@@ -62,6 +62,7 @@ func main() {
 	}).Methods("GET")
 	r.HandleFunc("/", newShortUrl).Methods("POST")
 	r.HandleFunc("/delete", deleteHandler).Methods("GET")
+	r.HandleFunc("/cleanup", cleanupHandler).Methods("GET")
 	r.HandleFunc("/scam", scamHandler).Methods("POST")
 	r.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./static/admin.html")
@@ -124,6 +125,20 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	requestTime := time.Since(requestTimer)
 	logrus.Info(fmt.Sprintf("[%v] Deleting \"%s\"", requestTime, name))
 	_, _ = fmt.Fprintf(w, "Link deleted!")
+}
+
+func cleanupHandler(w http.ResponseWriter, r *http.Request) {
+	deadline := time.Now().Add(-10 * 24 * time.Hour)
+	results := connection.Collection("links").Find(bson.M{"clicks": 0})
+	link := &Link{}
+	for results.Next(link) {
+		logrus.Infof("Link %s was never clicked", link.Name)
+		if link.Created.Before(deadline) {
+			logrus.Infof("Deleting link %s", link.Name)
+			connection.Collection("links").DeleteDocument(link)
+		}
+	}
+	http.NotFound(w, r)
 }
 
 func scamHandler(w http.ResponseWriter, r *http.Request) {
