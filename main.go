@@ -241,6 +241,8 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logrus.Error(err)
 		}
+		requestTime := time.Since(requestTimer)
+		logrus.Info(fmt.Sprintf("[%v] Showing scam for %s to %s", requestTime, link.Name, link.Url))
 		return
 	}
 	referer := r.Header.Get("referer")
