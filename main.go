@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -22,13 +23,18 @@ import (
 
 var connection *bongo.Connection
 
-var templates = template.Must(template.ParseFiles("templates/scam.html", "templates/manage.html", "templates/new.html"))
+var templates = template.Must(template.ParseFiles("templates/scam.html", "templates/manage.html", "templates/new.html", "templates/index.html"))
+
+type captchaResponse struct {
+	Success    bool     `json:"success"`
+	ErrorCodes []string `json:"errorCodes"`
+}
 
 func main() {
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:               true,
-		FullTimestamp:             true,
+		ForceColors:   true,
+		FullTimestamp: true,
 	})
 	flag.String("mongodb", "localhost", "MongoDB Connection String")
 	flag.Int("port", 8000, "Port where the url shortener listens")
@@ -36,6 +42,8 @@ func main() {
 	flag.String("base-url", "http://localhost:8000", "Baseurl of the URL shortener")
 	flag.String("telegram-token", "", "Telegram Token for notifications")
 	flag.String("telegram-user", "", "Admin user for telegram notifications")
+	flag.String("friendlycaptcha-sitekey", "", "FriendlyCaptcha Sitekey - Set it to enable captchas for new links")
+	flag.String("friendlycaptcha-token", "", "FriendlyCaptcha Token - Set it to enable captchas for new links")
 	_ = viper.BindPFlags(flag.CommandLine)
 	flag.Parse()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -50,15 +58,21 @@ func main() {
 	}
 	logrus.Info("Connected to database")
 	_ = connection.Collection("links").Collection().EnsureIndex(mgo.Index{
-		Key:              []string{"name"},
-		Unique:           true,
+		Key:    []string{"name"},
+		Unique: true,
 	})
 
 	initTelegram(viper.GetString("telegram-token"), viper.GetInt("telegram-user"))
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./static/index.html")
+		err = templates.ExecuteTemplate(w, "index.html", map[string]interface{}{
+			"Sitekey": viper.GetString("friendlycaptcha-sitekey"),
+		})
+		if err != nil {
+			logrus.Error(err)
+		}
+		//http.ServeFile(w, r, "./static/index.html")
 	}).Methods("GET")
 	r.HandleFunc("/", newShortUrl).Methods("POST")
 	r.HandleFunc("/delete", deleteHandler).Methods("GET")
@@ -84,7 +98,7 @@ func main() {
 func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	requestTimer := time.Now()
 	if err := r.ParseForm(); err != nil {
-		returnError500(err, w);
+		returnError500(err, w)
 		return
 	}
 	params := mux.Vars(r)
@@ -217,7 +231,7 @@ func manageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = templates.ExecuteTemplate(w, "manage.html", map[string]interface{}{
 		"BaseUrl": viper.GetString("base-url"),
-		"Link": link,
+		"Link":    link,
 	})
 	if err != nil {
 		logrus.Error(err)
@@ -292,8 +306,8 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 		err := connection.Collection("links").FindOne(bson.M{"name": name}, link)
 		if err != nil {
 			link = &Link{
-				Url:url,
-				Name:name,
+				Url:  url,
+				Name: name,
 			}
 		}
 		link.Url = url
@@ -305,8 +319,31 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		link = &Link{
-			Url:url,
-			Name:name,
+			Url:  url,
+			Name: name,
+		}
+	}
+	if response != "application/json" && response != "text/plain" {
+		fData, _ := json.Marshal(map[string]string{
+			"solution": r.FormValue("frc-captcha-solution"),
+			"secret":   viper.GetString("friendlycaptcha-token"),
+			"sitekey":  viper.GetString("friendlycaptcha-sitekey"),
+		})
+		resp, err := http.Post("https://friendlycaptcha.com/api/v1/siteverify", "application/json", bytes.NewBuffer(fData))
+		if err != nil {
+			returnError500(err, w)
+			return
+		}
+		defer resp.Body.Close()
+		var data captchaResponse
+		err = json.NewDecoder(resp.Body).Decode(&data)
+		if err != nil {
+			returnError500(err, w)
+			return
+		}
+		if !data.Success {
+			returnError500(err, w)
+			return
 		}
 	}
 	link.Password = randomString(16, false)
@@ -334,7 +371,7 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 	default:
 		err = templates.ExecuteTemplate(w, "new.html", map[string]interface{}{
 			"BaseUrl": viper.GetString("base-url"),
-			"Link": link,
+			"Link":    link,
 		})
 		if err != nil {
 			logrus.Error(err)
@@ -381,7 +418,7 @@ func initTelegram(token string, userID int) {
 	telegramUserID = userID
 	scamButton = tb.InlineButton{
 		Unique: "scambutton",
-		Text: "Scam",
+		Text:   "Scam",
 	}
 
 	telegramBot.Handle(&scamButton, func(c *tb.Callback) {
@@ -411,7 +448,7 @@ func notifyTelegram(link Link) {
 	msg := fmt.Sprintf("Link %s führt zu \"%s\" und wurde bereits %d mal geklickt", link.Name, link.Url, link.Clicks)
 	scamButton.Data = link.Name
 	_, err := telegramBot.Send(&tb.User{ID: telegramUserID}, msg, &tb.ReplyMarkup{
-		InlineKeyboard:      [][]tb.InlineButton{
+		InlineKeyboard: [][]tb.InlineButton{
 			{
 				scamButton,
 			},

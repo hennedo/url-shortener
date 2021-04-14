@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>DRE.LI Url shortener</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width">
+		<link href="https://fonts.googleapis.com/css?family=Heebo:900|Montserrat&display=swap" rel="stylesheet">
+		<link href="/static/css/styles.css" rel="stylesheet">
+	</head>
+	<body>
+		<form method="POST" action="/" class="text-center">
+			<div class="emoji">‍🕵</div>
+			<h1>Shorten your links!</h1>
+			<div class="urlinput"><input type="text" name="url" placeholder="url"/></div>
+			<div><span class="label">Emojify short url</span> <input type="checkbox" name="emoji" value="1" id="emoji"/><label for="emoji"></label></div>
+			<div class="frc-captcha dark" style="margin: 20px auto;" data-sitekey="{{ .Sitekey }}"></div>
+			<input type="submit" value="shorten" class="button"/>
+		</form>
+		<iframe src="https://ghbtns.com/github-btn.html?user=hennedo&amp;repo=url-shortener&amp;type=star&amp;count=true" scrolling="0" style="position: absolute;left: 10px;top: 10px;" width="170px" height="20px" frameborder="0"></iframe>
+		<!-- from unpkg -->
+		<script type="module" src="https://unpkg.com/friendly-challenge@0.8.3/widget.module.min.js" async defer></script>
+		<script nomodule src="https://unpkg.com/friendly-challenge@0.8.3/widget.min.js" async defer></script>
+	</body>
+</html>
