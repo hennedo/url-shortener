@@ -25,7 +25,7 @@ import (
 var connection *bongo.Connection
 
 var templates = template.Must(template.ParseFiles("templates/scam.html", "templates/manage.html", "templates/new.html", "templates/index.html"))
-
+var botsFound uint32
 type captchaResponse struct {
 	Success bool `json:"success"`
 	ErrorCodes []string `json:"errorCodes"`
@@ -69,6 +69,7 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err = templates.ExecuteTemplate(w, "index.html", map[string]interface{}{
 			"Sitekey": viper.GetString("friendlycaptcha-sitekey"),
+			"Bots": botsFound,
 		})
 		if err != nil {
 			logrus.Error(err)
@@ -359,7 +360,13 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 			Name:name,
 		}
 	}
-	if response != "application/json" && response != "text/plain" {
+	if response != "application/json" && response != "text/plain" && password != viper.GetString("admin-password") {
+		if r.FormValue("frc-captcha-solution") == "" {
+			returnError404(w)
+			logrus.Info("Cancelled - No captcha provided")
+			botsFound++
+			return
+		}
 		fData, _ := json.Marshal(map[string]string {
 			"solution": r.FormValue("frc-captcha-solution"),
 			"secret": viper.GetString("friendlycaptcha-token"),
@@ -378,7 +385,8 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !data.Success {
-			returnError500(err, w)
+			logrus.Info("Cancelled - Captcha not successful")
+			returnError404(w)
 			return
 		}
 	}
