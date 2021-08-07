@@ -17,6 +17,8 @@
         <li>From other platforms: {{.Link.ClicksOther}}</li>
         <li>Clicks without referer: {{.Link.ClicksNone}}</li>
     </ul>
+    <h2 class="text-center">QR Code</h2>
+    <div class="text-center"><img src="{{ .BaseUrl }}/{{ .Link.Name}}.png"></div>
     <div class="text-center"><a href="{{.BaseUrl}}/{{.Link.Name}}/{{.Link.Password}}/delete" class="button" style="background-color: red; margin-top: 10px;">Delete Shorturl</a></div>
 <iframe src="https://ghbtns.com/github-btn.html?user=hennedo&amp;repo=url-shortener&amp;type=star&amp;count=true" scrolling="0" style="position: absolute;left: 10px;top: 10px;" width="170px" height="20px" frameborder="0"></iframe>
 </body>

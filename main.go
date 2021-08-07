@@ -14,6 +14,7 @@ import (
 	"github.com/go-bongo/bongo"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	qrcode "github.com/skip2/go-qrcode"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/mgo.v2"
@@ -26,15 +27,15 @@ var connection *bongo.Connection
 var templates = template.Must(template.ParseFiles("templates/scam.html", "templates/manage.html", "templates/new.html", "templates/index.html"))
 
 type captchaResponse struct {
-	Success    bool     `json:"success"`
+	Success bool `json:"success"`
 	ErrorCodes []string `json:"errorCodes"`
 }
 
 func main() {
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:   true,
-		FullTimestamp: true,
+		ForceColors:               true,
+		FullTimestamp:             true,
 	})
 	flag.String("mongodb", "localhost", "MongoDB Connection String")
 	flag.Int("port", 8000, "Port where the url shortener listens")
@@ -58,8 +59,8 @@ func main() {
 	}
 	logrus.Info("Connected to database")
 	_ = connection.Collection("links").Collection().EnsureIndex(mgo.Index{
-		Key:    []string{"name"},
-		Unique: true,
+		Key:              []string{"name"},
+		Unique:           true,
 	})
 
 	initTelegram(viper.GetString("telegram-token"), viper.GetInt("telegram-user"))
@@ -85,6 +86,7 @@ func main() {
 	r.PathPrefix("/robots.txt").Handler(http.FileServer(http.Dir("./static/")))
 	r.HandleFunc("/monitoring", monitoringHandler).Methods("HEAD")
 	r.HandleFunc("/monitoring", monitoringHandler).Methods("GET")
+	r.HandleFunc("/{name}.png", qrCodeHandler).Methods("GET")
 	r.HandleFunc("/{name}", redirectHandler).Methods("GET")
 	r.HandleFunc("/{name}/{password}", manageHandler).Methods("GET")
 	r.HandleFunc("/{name}/{password}/delete", deleteHandler).Methods("GET")
@@ -95,6 +97,40 @@ func main() {
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("port")), nil))
 }
 
+func qrCodeHandler(w http.ResponseWriter, r *http.Request) {
+	requestTimer := time.Now()
+	params := mux.Vars(r)
+	name := params["name"]
+	if name == "" {
+		_, _ = fmt.Fprintf(w, "We need a link name..")
+		return
+	}
+	var link Link
+	err := connection.Collection("links").FindOne(bson2.M{"name": name}, &link)
+	if _, ok := err.(*bongo.DocumentNotFoundError); ok {
+		logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
+		returnError404(w)
+		return
+		// crappingfuckfuckers warum gibt es denn nen string zurück mit not found.. wie dumm.
+	} else if err != nil {
+		if err.Error() == "not found" {
+			logrus.Info(fmt.Sprintf("Short \"%s\" not found", name))
+			returnError404(w)
+			return
+		}
+		returnError500(err, w)
+		return
+	}
+	png, err := qrcode.Encode(fmt.Sprintf("%s/%s", viper.GetString("base-url"), link.Name), qrcode.Highest, 512)
+	if err != nil {
+		returnError500(err, w)
+		return
+	}
+	w.Header().Set("content-type", "image/png")
+	_, _ = w.Write(png)
+	requestTime := time.Since(requestTimer)
+	logrus.Info(fmt.Sprintf("[%v] QR Code. \"%s\"", requestTime, name))
+}
 func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	requestTimer := time.Now()
 	if err := r.ParseForm(); err != nil {
@@ -231,7 +267,7 @@ func manageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = templates.ExecuteTemplate(w, "manage.html", map[string]interface{}{
 		"BaseUrl": viper.GetString("base-url"),
-		"Link":    link,
+		"Link": link,
 	})
 	if err != nil {
 		logrus.Error(err)
@@ -306,8 +342,8 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 		err := connection.Collection("links").FindOne(bson.M{"name": name}, link)
 		if err != nil {
 			link = &Link{
-				Url:  url,
-				Name: name,
+				Url:url,
+				Name:name,
 			}
 		}
 		link.Url = url
@@ -319,15 +355,15 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		link = &Link{
-			Url:  url,
-			Name: name,
+			Url:url,
+			Name:name,
 		}
 	}
 	if response != "application/json" && response != "text/plain" {
-		fData, _ := json.Marshal(map[string]string{
+		fData, _ := json.Marshal(map[string]string {
 			"solution": r.FormValue("frc-captcha-solution"),
-			"secret":   viper.GetString("friendlycaptcha-token"),
-			"sitekey":  viper.GetString("friendlycaptcha-sitekey"),
+			"secret": viper.GetString("friendlycaptcha-token"),
+			"sitekey": viper.GetString("friendlycaptcha-sitekey"),
 		})
 		resp, err := http.Post("https://friendlycaptcha.com/api/v1/siteverify", "application/json", bytes.NewBuffer(fData))
 		if err != nil {
@@ -371,7 +407,7 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 	default:
 		err = templates.ExecuteTemplate(w, "new.html", map[string]interface{}{
 			"BaseUrl": viper.GetString("base-url"),
-			"Link":    link,
+			"Link": link,
 		})
 		if err != nil {
 			logrus.Error(err)
@@ -418,7 +454,7 @@ func initTelegram(token string, userID int) {
 	telegramUserID = userID
 	scamButton = tb.InlineButton{
 		Unique: "scambutton",
-		Text:   "Scam",
+		Text: "Scam",
 	}
 
 	telegramBot.Handle(&scamButton, func(c *tb.Callback) {
@@ -448,7 +484,7 @@ func notifyTelegram(link Link) {
 	msg := fmt.Sprintf("Link %s führt zu \"%s\" und wurde bereits %d mal geklickt", link.Name, link.Url, link.Clicks)
 	scamButton.Data = link.Name
 	_, err := telegramBot.Send(&tb.User{ID: telegramUserID}, msg, &tb.ReplyMarkup{
-		InlineKeyboard: [][]tb.InlineButton{
+		InlineKeyboard:      [][]tb.InlineButton{
 			{
 				scamButton,
 			},
