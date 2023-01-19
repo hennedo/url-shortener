@@ -41,6 +41,7 @@ func main() {
 	flag.String("mongodb", "localhost", "MongoDB Connection String")
 	flag.Int("port", 8000, "Port where the url shortener listens")
 	flag.String("admin-password", "foobar2342", "Password for the admin endpoint")
+	flag.String("link-password", "", "If set, required to shorten links")
 	flag.String("base-url", "http://localhost:8000", "Baseurl of the URL shortener")
 	flag.String("telegram-token", "", "Telegram Token for notifications")
 	flag.String("telegram-user", "", "Admin user for telegram notifications")
@@ -69,8 +70,9 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err = templates.ExecuteTemplate(w, "index.html", map[string]interface{}{
-			"Sitekey": viper.GetString("friendlycaptcha-sitekey"),
-			"Bots":    botsFound,
+			"Sitekey":      viper.GetString("friendlycaptcha-sitekey"),
+			"NeedPassword": viper.GetString("link-password") != "",
+			"Bots":         botsFound,
 		})
 		if err != nil {
 			logrus.Error(err)
@@ -331,6 +333,11 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 	url := addHttp(r.FormValue("url"))
 	emoji := r.FormValue("emoji")
 	password := r.FormValue("password")
+	link_password := r.FormValue("link_password")
+	if viper.GetString("link-password") != "" && link_password != viper.GetString("link-password") {
+		returnError401(w)
+		return
+	}
 	var response string
 	if r.FormValue("accept") != "" {
 		response = r.FormValue("accept")
@@ -409,10 +416,8 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Write(b)
-		break
 	case "text/plain":
 		_, _ = fmt.Fprintf(w, "%s/%s", viper.GetString("base-url"), name)
-		break
 	default:
 		err = templates.ExecuteTemplate(w, "new.html", map[string]interface{}{
 			"BaseUrl": viper.GetString("base-url"),
@@ -421,7 +426,6 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logrus.Error(err)
 		}
-		break
 	}
 	requestTime := time.Since(requestTimer)
 	logrus.Info(fmt.Sprintf("[%v] New Shorturl: %s redirects to %s (%s)", requestTime, name, url, r.Header.Get("Accept")))

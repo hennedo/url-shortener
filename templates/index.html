@@ -13,6 +13,9 @@
 			<h1>Shorten your links!</h1>
 			<div class="urlinput"><input type="text" name="url" placeholder="url"/></div>
 			<div><span class="label">Emojify short url</span> <input type="checkbox" name="emoji" value="1" id="emoji"/><label for="emoji"></label></div>
+			{{if .NeedsPassword }}
+			<div class="urlinput"><input type="password" name="link-password" placeholder="Passwort"/></div>
+			{{end}}
 			<div class="frc-captcha dark" style="margin: 20px auto;" data-sitekey="{{ .Sitekey }}"></div>
 			<input type="submit" value="shorten" class="button"/>
 			<div style="font-size: x-small">Rejected {{.Bots}} bots from spamming since I was last restarted.</div>
