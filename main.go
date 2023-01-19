@@ -42,6 +42,7 @@ func main() {
 	flag.Int("port", 8000, "Port where the url shortener listens")
 	flag.String("admin-password", "foobar2342", "Password for the admin endpoint")
 	flag.String("link-password", "", "If set, required to shorten links")
+	flag.String("abuse-link", "", "Link to use for the abuse link")
 	flag.String("base-url", "http://localhost:8000", "Baseurl of the URL shortener")
 	flag.String("telegram-token", "", "Telegram Token for notifications")
 	flag.String("telegram-user", "", "Admin user for telegram notifications")
@@ -70,9 +71,10 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err = templates.ExecuteTemplate(w, "index.html", map[string]interface{}{
-			"Sitekey":      viper.GetString("friendlycaptcha-sitekey"),
-			"NeedPassword": viper.GetString("link-password") != "",
-			"Bots":         botsFound,
+			"Sitekey":       viper.GetString("friendlycaptcha-sitekey"),
+			"NeedsPassword": viper.GetString("link-password") != "",
+			"AbuseLink":     viper.GetString("abuse-link"),
+			"Bots":          botsFound,
 		})
 		if err != nil {
 			logrus.Error(err)
