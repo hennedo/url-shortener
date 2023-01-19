@@ -2,3 +2,7 @@
 .vscode/
 .DS_Store
 *.iml
+
+dist/
+cross-compile.sh
+start

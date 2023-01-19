@@ -26,16 +26,17 @@ var connection *bongo.Connection
 
 var templates = template.Must(template.ParseFiles("templates/scam.html", "templates/manage.html", "templates/new.html", "templates/index.html"))
 var botsFound uint32
+
 type captchaResponse struct {
-	Success bool `json:"success"`
+	Success    bool     `json:"success"`
 	ErrorCodes []string `json:"errorCodes"`
 }
 
 func main() {
 	logrus.SetLevel(logrus.TraceLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{
-		ForceColors:               true,
-		FullTimestamp:             true,
+		ForceColors:   true,
+		FullTimestamp: true,
 	})
 	flag.String("mongodb", "localhost", "MongoDB Connection String")
 	flag.Int("port", 8000, "Port where the url shortener listens")
@@ -59,8 +60,8 @@ func main() {
 	}
 	logrus.Info("Connected to database")
 	_ = connection.Collection("links").Collection().EnsureIndex(mgo.Index{
-		Key:              []string{"name"},
-		Unique:           true,
+		Key:    []string{"name"},
+		Unique: true,
 	})
 
 	initTelegram(viper.GetString("telegram-token"), viper.GetInt("telegram-user"))
@@ -69,12 +70,11 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err = templates.ExecuteTemplate(w, "index.html", map[string]interface{}{
 			"Sitekey": viper.GetString("friendlycaptcha-sitekey"),
-			"Bots": botsFound,
+			"Bots":    botsFound,
 		})
 		if err != nil {
 			logrus.Error(err)
 		}
-		//http.ServeFile(w, r, "./static/index.html")
 	}).Methods("GET")
 	r.HandleFunc("/", newShortUrl).Methods("POST")
 	r.HandleFunc("/delete", deleteHandler).Methods("GET")
@@ -265,10 +265,11 @@ func manageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if params["password"] != viper.Get("admin-password") && link.Scam {
 		_, _ = fmt.Fprint(w, "This link was marked as scam, it's disabled.")
+		return
 	}
 	err = templates.ExecuteTemplate(w, "manage.html", map[string]interface{}{
 		"BaseUrl": viper.GetString("base-url"),
-		"Link": link,
+		"Link":    link,
 	})
 	if err != nil {
 		logrus.Error(err)
@@ -343,8 +344,8 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 		err := connection.Collection("links").FindOne(bson.M{"name": name}, link)
 		if err != nil {
 			link = &Link{
-				Url:url,
-				Name:name,
+				Url:  url,
+				Name: name,
 			}
 		}
 		link.Url = url
@@ -356,8 +357,8 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		link = &Link{
-			Url:url,
-			Name:name,
+			Url:  url,
+			Name: name,
 		}
 	}
 	if response != "application/json" && response != "text/plain" && password != viper.GetString("admin-password") {
@@ -367,12 +368,12 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 			botsFound++
 			return
 		}
-		fData, _ := json.Marshal(map[string]string {
+		fData, _ := json.Marshal(map[string]string{
 			"solution": r.FormValue("frc-captcha-solution"),
-			"secret": viper.GetString("friendlycaptcha-token"),
-			"sitekey": viper.GetString("friendlycaptcha-sitekey"),
+			"secret":   viper.GetString("friendlycaptcha-token"),
+			"sitekey":  viper.GetString("friendlycaptcha-sitekey"),
 		})
-		resp, err := http.Post("https://friendlycaptcha.com/api/v1/siteverify", "application/json", bytes.NewBuffer(fData))
+		resp, err := http.Post("https://api.friendlycaptcha.com/api/v1/siteverify", "application/json", bytes.NewBuffer(fData))
 		if err != nil {
 			returnError500(err, w)
 			return
@@ -415,7 +416,7 @@ func newShortUrl(w http.ResponseWriter, r *http.Request) {
 	default:
 		err = templates.ExecuteTemplate(w, "new.html", map[string]interface{}{
 			"BaseUrl": viper.GetString("base-url"),
-			"Link": link,
+			"Link":    link,
 		})
 		if err != nil {
 			logrus.Error(err)
@@ -462,7 +463,7 @@ func initTelegram(token string, userID int) {
 	telegramUserID = userID
 	scamButton = tb.InlineButton{
 		Unique: "scambutton",
-		Text: "Scam",
+		Text:   "Scam",
 	}
 
 	telegramBot.Handle(&scamButton, func(c *tb.Callback) {
@@ -492,7 +493,7 @@ func notifyTelegram(link Link) {
 	msg := fmt.Sprintf("Link %s führt zu \"%s\" und wurde bereits %d mal geklickt", link.Name, link.Url, link.Clicks)
 	scamButton.Data = link.Name
 	_, err := telegramBot.Send(&tb.User{ID: telegramUserID}, msg, &tb.ReplyMarkup{
-		InlineKeyboard:      [][]tb.InlineButton{
+		InlineKeyboard: [][]tb.InlineButton{
 			{
 				scamButton,
 			},
